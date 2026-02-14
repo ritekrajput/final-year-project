@@ -1,0 +1,13 @@
+# Models
+*.pt
+*.pth
+*.h5
+*.pkl
+*.onnx
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.env
+.venv
