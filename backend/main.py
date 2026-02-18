@@ -11,9 +11,9 @@ app = FastAPI()
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-# ======================================================
-# ----------------------- MODELS -----------------------
-# ======================================================
+
+# MODELS 
+
 
 class AssessmentRequest(BaseModel):
     user_id: str
@@ -30,12 +30,7 @@ class QuestionnaireRequest(BaseModel):
     user_id: str
     module: str
     answers: Dict[str, int]
-
-
-# ======================================================
-# ---------------- STANDARD SCORING -------------------
-# ======================================================
-
+# STANDARD SCORING
 def clamp_score(score: float):
     return round(max(0, min(score, 10)), 2)
 
@@ -53,12 +48,7 @@ def interpret_level(score: float):
         return "High"
     else:
         return "Critical"
-
-
-# ======================================================
-# ---------------- WEIGHT CONFIG -----------------------
-# ======================================================
-
+# WEIGHT CONFIG 
 WEIGHTS = {
     "AI": 0.25,
     "PHQ9": 0.25,
@@ -71,12 +61,7 @@ WEIGHTS = {
     "SELF_ESTEEM": 0.01,
     "MENTAL_HEALTH": 0.01
 }
-
-
-# ======================================================
-# ---------------- SESSION HELPERS --------------------
-# ======================================================
-
+# SESSION HELPERS 
 def get_or_create_patient(db, user_id):
     patient = db.query(Patient).filter(
         Patient.patient_id == user_id
@@ -171,9 +156,8 @@ def save_test(user_id, test_type, score):
     return score, level
 
 
-# ======================================================
-# ---------------- AI ENDPOINT ------------------------
-# ======================================================
+
+# AI ENDPOINT
 
 @app.post("/assessments/create")
 async def create_assessment(request: AssessmentRequest):
@@ -202,9 +186,8 @@ async def create_assessment(request: AssessmentRequest):
     }
 
 
-# ======================================================
-# ---------------- PHQ-9 ENDPOINT ---------------------
-# ======================================================
+# PHQ-9 ENDPOINT ---------------------
+
 
 @app.post("/phq9/submit")
 def submit_phq9(request: PHQ9Request):
@@ -224,9 +207,7 @@ def submit_phq9(request: PHQ9Request):
     }
 
 
-# ======================================================
-# -------- MULTI-DOMAIN QUESTIONNAIRE ENDPOINT -------
-# ======================================================
+# MULTI-DOMAIN QUESTIONNAIRE ENDPOINT 
 
 @app.post("/questionnaire/submit")
 def submit_questionnaire(request: QuestionnaireRequest):
@@ -261,9 +242,7 @@ def submit_questionnaire(request: QuestionnaireRequest):
     }
 
 
-# ======================================================
-# ---------------- SESSION VIEW ENDPOINT --------------
-# ======================================================
+# SESSION VIEW ENDPOINT
 
 @app.get("/sessions/{user_id}")
 def get_sessions(user_id: str):
@@ -296,11 +275,7 @@ def get_sessions(user_id: str):
 
     return result
 
-
-
-# ======================================================
-# ---------------- TEST HISTORY ENDPOINT --------------
-# ======================================================
+# TEST HISTORY ENDPOINT
 
 @app.get("/tests/{user_id}")
 def get_tests(user_id: str):

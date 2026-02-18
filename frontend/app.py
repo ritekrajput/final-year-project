@@ -4,16 +4,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-# -----------------------
 # CONFIG
-# -----------------------
+
 BASE_URL = "http://127.0.0.1:8000"
 
 st.set_page_config(page_title="Mental Health Assessment", layout="centered")
 
-# -----------------------
 # SIDEBAR
-# -----------------------
+
 page = st.sidebar.radio(
     "Navigation",
     [
@@ -24,16 +22,16 @@ page = st.sidebar.radio(
     ]
 )
 
-# =====================================================
+
 # PAGE 1 — AI
-# =====================================================
+
 if page == "Run AI Assessment":
 
-    st.title("🧠 AI Depression Assessment")
+    st.title("AI Depression Assessment")
 
     user_id = st.text_input("Patient ID")
     patient_text = st.text_area("How have you been feeling recently?")
-    relative_text = st.text_area("Observed behavioral changes (optional)")
+    relative_text = st.text_area("Observed behavioral changes")
 
     if st.button("Run AI Assessment"):
 
@@ -55,12 +53,12 @@ if page == "Run AI Assessment":
             st.metric("AI Score", f"{result['score']} / 10")
             st.metric("Risk Level", result["level"])
 
-# =====================================================
+
 # PAGE 2 — PHQ9
-# =====================================================
+
 elif page == "PHQ-9 Questionnaire":
 
-    st.title("📋 PHQ-9 Questionnaire")
+    st.title("PHQ-9 Questionnaire")
 
     user_id = st.text_input("Patient ID")
 
@@ -99,12 +97,12 @@ elif page == "PHQ-9 Questionnaire":
             st.metric("PHQ-9 Score", f"{result['score']} / 10")
             st.metric("Risk Level", result["level"])
 
-# =====================================================
+
 # PAGE 3 — MULTI-DOMAIN
-# =====================================================
+
 elif page == "Multi-Domain Assessment":
 
-    st.title("🧩 Multi-Domain Screening")
+    st.title(" Multi-Domain Screening")
 
     user_id = st.text_input("Patient ID")
 
@@ -228,10 +226,10 @@ elif page == "Multi-Domain Assessment":
                       f"{result['score']} / 10")
             st.metric("Risk Level", result["level"])
 
-# =====================================================
+
 # PAGE 4 — DASHBOARD
-# =====================================================
-elif page == "Patient Dashboard":
+
+elif page == "Patient History Dashboard":
 
     st.title("📊 Patient Dashboard")
 
@@ -241,9 +239,9 @@ elif page == "Patient Dashboard":
         st.info("Please enter a Patient ID.")
         st.stop()
 
-    # -----------------------
+   
     # FETCH DATA
-    # -----------------------
+    
     try:
         tests_response = requests.get(f"{BASE_URL}/tests/{user_id}")
         sessions_response = requests.get(f"{BASE_URL}/sessions/{user_id}")
@@ -259,9 +257,9 @@ elif page == "Patient Dashboard":
         st.warning("No test records found.")
         st.stop()
 
-    # -----------------------
+    
     # CREATE DATAFRAMES
-    # -----------------------
+    
     tests_df = pd.DataFrame(tests_data)
     tests_df["created_at"] = pd.to_datetime(tests_df["created_at"])
     tests_df = tests_df.sort_values("created_at")
@@ -271,9 +269,9 @@ elif page == "Patient Dashboard":
     if not sessions_df.empty:
         sessions_df["created_at"] = pd.to_datetime(sessions_df["created_at"])
         sessions_df = sessions_df.sort_values("created_at")
-    #=====================================================
+    
     #select session
-    #=====================================================
+    
     if not sessions_df.empty:
 
         session_options = sessions_df["session_number"].tolist()
@@ -334,10 +332,10 @@ elif page == "Patient Dashboard":
                 st.info("No change.")
 
 
-    # =====================================================
+    
     # SESSION OVERVIEW
-    # =====================================================
-    st.subheader("📅 Sessions Overview")
+    
+    st.subheader("Sessions Overview")
 
     if not sessions_df.empty:
         st.dataframe(sessions_df)
@@ -358,10 +356,10 @@ elif page == "Patient Dashboard":
 
     st.markdown("---")
 
-    # =====================================================
+    
     # TESTS GROUPED BY SESSION
-    # =====================================================
-    st.subheader("🧪 Tests Grouped by Session")
+    
+    st.subheader("Tests Grouped by Session")
 
     if not sessions_df.empty:
 
@@ -393,10 +391,10 @@ elif page == "Patient Dashboard":
     else:
         st.info("No test sessions available.")
 
-    # =====================================================
+    
     # RADAR PROFILE (Latest per module)
-    # =====================================================
-    st.subheader("🕸 Latest Mental Health Profile")
+    
+    st.subheader("Latest Mental Health Profile")
 
     latest = tests_df.sort_values("created_at").groupby(
         "test_type"
@@ -422,8 +420,8 @@ elif page == "Patient Dashboard":
         st.info("Not enough modules for radar chart.")
 
 
-# -----------------------
+
 # FOOTER
-# -----------------------
+
 st.markdown("---")
 st.caption("⚠️ Academic and research tool only. Not a medical diagnosis.")

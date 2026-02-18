@@ -17,9 +17,9 @@ SessionLocal = sessionmaker(
 
 Base = declarative_base()
 
-# ======================================================
+
 # PATIENT TABLE
-# ======================================================
+
 
 class Patient(Base):
     __tablename__ = "patients"
@@ -31,9 +31,9 @@ class Patient(Base):
     sessions = relationship("Session", back_populates="patient")
 
 
-# ======================================================
+
 # SESSION TABLE
-# ======================================================
+
 
 class Session(Base):
     __tablename__ = "sessions"
@@ -48,9 +48,9 @@ class Session(Base):
     tests = relationship("Test", back_populates="session")
 
 
-# ======================================================
+
 # TEST TABLE
-# ======================================================
+
 
 class Test(Base):
     __tablename__ = "tests"
@@ -58,8 +58,8 @@ class Test(Base):
     id = Column(Integer, primary_key=True)
     session_id = Column(Integer, ForeignKey("sessions.id"))
 
-    test_type = Column(String)  # AI, PHQ9, ANXIETY, etc.
-    score = Column(Float)      # 0–10
+    test_type = Column(String)
+    score = Column(Float)
     level = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
 
