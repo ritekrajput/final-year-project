@@ -30,7 +30,20 @@ class Patient(Base):
 
     sessions = relationship("Session", back_populates="patient")
 
+class AVInterview(Base):
+    __tablename__ = "av_interview"
 
+    id = Column(Integer, primary_key=True)
+    session_id = Column(Integer, ForeignKey("sessions.id"))
+
+    question = Column(String)
+    transcript = Column(String)
+
+    video_emotion = Column(String)
+    audio_emotion = Column(String)
+    audio_confidence = Column(Float)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 # SESSION TABLE
 
