@@ -1,13 +1,19 @@
+from datetime import datetime
+import os
+from pathlib import Path
+
 from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
-from datetime import datetime
 
-DATABASE_URL = "sqlite:///backend/depression.db"
+BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_DATABASE_URL = f"sqlite:///{BASE_DIR / 'depression.db'}"
+DATABASE_URL = os.environ.get("DATABASE_URL") or DEFAULT_DATABASE_URL
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False}
-)
+engine_kwargs = {}
+if DATABASE_URL.startswith("sqlite"):
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
+
+engine = create_engine(DATABASE_URL, **engine_kwargs)
 
 SessionLocal = sessionmaker(
     autocommit=False,

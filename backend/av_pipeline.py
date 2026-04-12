@@ -15,7 +15,8 @@ import os
 import av as pyav          # PyAV — uses libav C bindings, no ffmpeg CLI needed
 
 from faster_whisper import WhisperModel
-from transformers import AutoFeatureExtractor, AutoModelForAudioClassification
+from safetensors.torch import load_file as load_safetensors
+from transformers import AutoConfig, AutoFeatureExtractor, Wav2Vec2ForSequenceClassification
 from deepface import DeepFace
 
 # Optional: Praat/Parselmouth for advanced voice analysis
@@ -31,13 +32,78 @@ except ImportError:
 # MODEL LOADING (done once at import time)
 # ─────────────────────────────────────────────
 
+def _resolve_cached_model_path(model_cache_dir: str, snapshot_id: str, fallback_name: str):
+    snapshot_path = os.path.join(
+        os.path.expanduser("~"),
+        ".cache",
+        "huggingface",
+        "hub",
+        model_cache_dir,
+        "snapshots",
+        snapshot_id,
+    )
+    if os.path.isdir(snapshot_path):
+        return snapshot_path
+    return fallback_name
+
+
 print("[AV Pipeline] Loading Whisper model...")
-whisper_model = WhisperModel("base")
+WHISPER_DEVICE = os.environ.get("WHISPER_DEVICE", "cpu")
+WHISPER_COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "int8")
+_WHISPER_MODEL_PATH = _resolve_cached_model_path(
+    "models--Systran--faster-whisper-base",
+    "ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66",
+    "base",
+)
+whisper_model = WhisperModel(
+    _WHISPER_MODEL_PATH,
+    device=WHISPER_DEVICE,
+    compute_type=WHISPER_COMPUTE_TYPE,
+)
 
 print("[AV Pipeline] Loading audio emotion model...")
 _EMOTION_MODEL_NAME = "ehcalabres/wav2vec2-lg-xlsr-en-speech-emotion-recognition"
-feature_extractor = AutoFeatureExtractor.from_pretrained(_EMOTION_MODEL_NAME)
-emotion_model = AutoModelForAudioClassification.from_pretrained(_EMOTION_MODEL_NAME)
+_AUDIO_MODEL_PATH = _resolve_cached_model_path(
+    "models--ehcalabres--wav2vec2-lg-xlsr-en-speech-emotion-recognition",
+    "b520c9c46a719e36e1b9a91cad2cb5d0668757d8",
+    _EMOTION_MODEL_NAME,
+)
+feature_extractor = AutoFeatureExtractor.from_pretrained(
+    _AUDIO_MODEL_PATH,
+    local_files_only=True,
+)
+
+
+def _load_audio_emotion_model(model_name: str):
+    config = AutoConfig.from_pretrained(_AUDIO_MODEL_PATH, local_files_only=True)
+    if hasattr(config, "classifier_proj_size"):
+        config.classifier_proj_size = config.hidden_size
+    model = Wav2Vec2ForSequenceClassification(config)
+
+    checkpoint_path = os.path.join(_AUDIO_MODEL_PATH, "model.safetensors")
+    state_dict = load_safetensors(checkpoint_path)
+
+    key_map = {
+        "classifier.dense.weight": "projector.weight",
+        "classifier.dense.bias": "projector.bias",
+        "classifier.output.weight": "classifier.weight",
+        "classifier.output.bias": "classifier.bias",
+    }
+    for old_key, new_key in key_map.items():
+        if old_key in state_dict:
+            state_dict[new_key] = state_dict.pop(old_key)
+
+    missing, unexpected = model.load_state_dict(state_dict, strict=False)
+    if unexpected:
+        print(f"[AV Pipeline] Warning: unexpected audio checkpoint keys: {unexpected}")
+    if missing:
+        print(f"[AV Pipeline] Warning: missing audio checkpoint keys: {missing}")
+
+    model.eval()
+    return model
+
+
+emotion_model = _load_audio_emotion_model(_EMOTION_MODEL_NAME)
 
 print("[AV Pipeline] All models loaded.")
 
@@ -133,6 +199,8 @@ def record_video_audio(duration: int = 60,
     cv2.destroyAllWindows()
 
 TARGET_SR = 16000   # Whisper, librosa, and wav2vec2 all expect 16 kHz
+VIDEO_EMOTION_SAMPLE_EVERY = int(os.environ.get("VIDEO_EMOTION_SAMPLE_EVERY", "60"))
+VIDEO_EMOTION_MAX_WIDTH = int(os.environ.get("VIDEO_EMOTION_MAX_WIDTH", "160"))
 
 def extract_audio_from_video(video_path: str, audio_path: str) -> None:
     """
@@ -233,14 +301,27 @@ def analyze_video_emotion(video_path: str):
     cap = cv2.VideoCapture(video_path)
     emotions_sum = {k: 0.0 for k in EMOTION_WEIGHTS}
     frame_count = 0
+    sample_every = max(1, VIDEO_EMOTION_SAMPLE_EVERY)
 
+    processed = 0
     while True:
         ret, frame = cap.read()
         if not ret:
             break
+        processed += 1
+        if processed % sample_every != 0:
+            continue
+
         try:
+            height, width = frame.shape[:2]
+            if width > VIDEO_EMOTION_MAX_WIDTH:
+                scale = VIDEO_EMOTION_MAX_WIDTH / float(width)
+                frame = cv2.resize(frame, (VIDEO_EMOTION_MAX_WIDTH, int(height * scale)))
             result = DeepFace.analyze(
-                frame, actions=["emotion"], enforce_detection=False
+                frame,
+                actions=["emotion"],
+                enforce_detection=False,
+                detector_backend="opencv",
             )
             emotion_data = result[0]["emotion"]
             for e in emotions_sum:
@@ -264,7 +345,13 @@ def analyze_video_emotion(video_path: str):
 # ─────────────────────────────────────────────
 
 def speech_to_text(audio_path: str) -> str:
-    segments, _ = whisper_model.transcribe(audio_path)
+    segments, _ = whisper_model.transcribe(
+        audio_path,
+        beam_size=1,
+        best_of=1,
+        vad_filter=True,
+        temperature=0.0,
+    )
     return "".join(seg.text for seg in segments).strip()
 
 
@@ -355,6 +442,11 @@ def predict_audio_emotion(audio_path: str):
     probs = torch.nn.functional.softmax(logits, dim=1)
     predicted_id = torch.argmax(probs).item()
     emotion = emotion_model.config.id2label[predicted_id]
+    emotion = {
+        "fearful": "fear",
+        "surprised": "surprise",
+        "calm": "neutral",
+    }.get(emotion.lower(), emotion.lower())
     confidence = round(float(probs[0][predicted_id].item()), 4)
 
     return emotion, confidence
