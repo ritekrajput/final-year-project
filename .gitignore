@@ -1,15 +1,26 @@
 # Models
-*.pt
-*.pth
+
+
 *.h5
 *.pkl
 *.onnx
+*.safetensors
 
 # Python
 __pycache__/
+**/__pycache__/
 *.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
 venv/
 .env
-.venv
-*.db
+.venv/
+
 temp/
+backend/temp/
+frontend/temp/
+dataset/metadata.csv
+dataset/
+git
+backend/models/

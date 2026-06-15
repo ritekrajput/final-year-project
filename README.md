@@ -1,350 +1,344 @@
-# Mental Health Assessment Platform
+# Multi-Modal Machine Learning System for Early Detection of Mental Health Conditions
 
-A comprehensive AI-powered mental health assessment system designed to provide personalized depression and mental health screening through multiple modalities including text analysis, questionnaires, and audio-video interviews.
+This repository contains the implementation of a research-oriented mental health screening platform inspired by the project paper and presentation for a multimodal clinical decision-support system. The system combines standardized psychiatric screening with AI-based analysis of text, audio, and video signals to estimate psychological distress on a continuous severity scale.
 
-## 🎯 Project Overview
+## Project Summary
 
-This platform enables clinicians and researchers to conduct evidence-based mental health assessments using:
-- **AI Text Analysis** - Automated depression severity scoring from patient narratives
-- **PHQ-9 Screening** - Standard depression assessment questionnaire
-- **Multi-Domain Screening** - Comprehensive assessment across 9 mental health domains
-- **Guided Interviews** - Audio/video recorded responses with emotion recognition
-- **Patient Dashboard** - Longitudinal tracking and progress visualization
+Conventional mental health screening often depends on self-reported questionnaires and semi-structured interviews, both of which are vulnerable to cognitive bias and intentional masking of symptoms. This project addresses that limitation by combining:
 
-## ✨ Key Features
+- free-text depression assessment using a RoBERTa-based regression model
+- standardized psychiatric screening such as PHQ-9 and anxiety-related modules
+- audio-derived behavioral cues such as pitch, jitter, shimmer, loudness, and speech rate
+- video-derived cues such as facial emotion distributions over time
+- longitudinal patient-session tracking through a normalized relational database
 
-### 1. **AI Depression Assessment**
-- Patient enters narrative text and observations from relatives
-- Machine learning model (RoBERTa-based) calculates depression severity score (0-10)
-- Risk level classification: Low, Moderate, High, Critical
+The intended research architecture is a multimodal learning pipeline in which text, audio, and video features are fused through a cross-attention mechanism to produce a continuous mental health severity score.
 
-### 2. **PHQ-9 Questionnaire**
-- Standard 9-item Patient Health Questionnaire
-- Scoring: 0-27 raw score normalized to 0-10 scale
-- Instant feedback with risk assessment
+## Research Objectives
 
-### 3. **Multi-Domain Screening**
-- 9 mental health modules:
-  - Anxiety, Self-Esteem, Procrastination
-  - Work Stress, Trauma, Grief
-  - Relationship Issues, Anger, General Mental Health
-- Customizable question banks
-- Reverse scoring for positive items
+The system is designed around the following research goals:
 
-### 4. **Audio/Video Assessment**
-- Guided interview with 9 expert-designed questions
-- Real-time video emotion detection (DeepFace)
-- Audio emotion recognition (wav2vec2 model)
-- Automatic speech-to-text transcription (Faster Whisper)
-- Voice feature extraction (jitter, shimmer, HNR, pitch)
-- Comprehensive multimodal depression risk scoring
+- build an early screening platform for mental health distress using multiple modalities instead of relying on only one source of information
+- combine clinically validated questionnaire signals with AI-derived behavioral features
+- estimate continuous severity rather than only a binary label
+- support longitudinal tracking across repeated sessions
+- preserve a human-in-the-loop workflow suitable for clinical decision support
 
-### 5. **Patient Dashboard**
-- Session history with weighted scores
-- Session-by-session comparison
-- Test results grouped by domain
-- Radar chart visualization of latest mental health profile
-- Session-wise interview response review with emotions
+## Research Architecture
 
-### 6. **Session Management**
-- Automatic session creation (new session if >1 hour since last test)
-- Weighted composite scoring across all assessments
-- Longitudinal tracking for clinical monitoring
+The paper describes the system as a three-layer architecture.
 
-## 🛠️ Tech Stack
+### 1. Presentation Layer
 
-### Backend
-- **FastAPI** - REST API framework
-- **SQLAlchemy** - ORM for database management
-- **SQLite** - Lightweight database
-- **PyTorch** - Deep learning framework
-- **Transformers** - Pre-trained NLP models
-- **Librosa** - Audio analysis
-- **Faster-Whisper** - Speech recognition
-- **DeepFace** - Facial emotion recognition
+Implemented in Streamlit, the frontend provides:
 
-### Frontend
-- **Streamlit** - Web application framework
-- **Streamlit-WebRTC** - Real-time audio/video streaming
-- **Pandas** - Data manipulation
-- **Matplotlib** - Data visualization
-- **Requests** - HTTP client
+- AI free-text assessment
+- PHQ-9 questionnaire
+- multi-domain screening
+- audio/video interview workflow
+- historical dashboard and visual summaries
 
-### Models & ML
-- **RoBERTa-base** - Text classification for depression severity
-- **wav2vec2-XLSR** - Audio emotion recognition
-- **DeepFace** - Facial emotion detection
-- **Faster-Whisper** - Automatic speech recognition
+### 2. Business Logic Layer
 
-## 📊 Project Structure
+Implemented in FastAPI, the backend is responsible for:
 
-```
-d:\project/
+- receiving assessment data from the frontend
+- routing requests to text, audio, and video inference pipelines
+- computing composite clinical scores
+- managing patient sessions
+- serving historical records and dashboard data
+
+### 3. Persistence Layer
+
+Implemented using SQLite and SQLAlchemy ORM, the database stores:
+
+- patient identities
+- assessment sessions
+- test-level scores and risk levels
+- interview transcripts and emotion outputs
+
+## Core Modalities
+
+### Text Modality
+
+The text pipeline is based on `RoBERTa-base` and follows the paper’s design:
+
+- input text is tokenized with a maximum sequence length of `256`
+- token embeddings are passed through `RoBERTa-base`
+- the `[CLS]` representation is extracted as the global semantic feature
+- dropout `0.4` is applied
+- a linear regression head predicts a continuous severity score on a `1-10` scale
+
+This pathway is intended to capture implicit indicators of psychological distress that may not be fully expressed through structured questionnaires.
+
+### Audio Modality
+
+The audio pipeline extracts behavioral and paralinguistic cues from speech, including:
+
+- pitch
+- jitter
+- shimmer
+- harmonic-to-noise ratio
+- loudness / energy
+- MFCC-derived descriptors
+- pause duration
+- speech rate
+
+The platform also performs:
+
+- speech transcription using Faster-Whisper
+- audio emotion classification using wav2vec2-based speech emotion modeling
+
+### Video Modality
+
+The video pipeline processes interview recordings frame by frame to derive:
+
+- dominant facial emotion
+- temporal emotion distributions
+- negative-emotion prevalence
+- structured video emotion feature vectors
+
+The current implementation uses DeepFace-based facial emotion analysis to approximate the visual branch described in the paper.
+
+### Multimodal Fusion
+
+The research paper describes a cross-attention fusion strategy in which:
+
+- text embeddings are aligned against audio embeddings
+- text embeddings are aligned against video embeddings
+- fused multimodal features are passed into a regression head / MLP
+- the output is a continuous mental health severity score
+
+The repository includes a multimodal fusion model scaffold reflecting this architecture in:
+
+- [backend/models/fusion_model.py](/C:/Users/Sayan%20Chakraborty/Desktop/BEP/final-year-project/backend/models/fusion_model.py)
+
+## Clinical Scoring Engine
+
+In addition to model-based inference, the system computes a session-level weighted composite score using completed clinical modules. The scoring logic is dynamically normalized so skipped modules do not unfairly skew the final score.
+
+### Assessment Weights
+
+The research paper emphasizes the following weighting strategy:
+
+| Module | Weight |
+|---|---:|
+| AI Assessment (Text) | 25% |
+| PHQ-9 | 25% |
+| Anxiety / GAD-7 | 15% |
+| Work Stress | 10% |
+| Anger | 10% |
+| Trauma | 5% |
+| Grief | 5% |
+| Relationship | 3% |
+| Self-Esteem | 1% |
+| General Mental Health | 1% |
+
+### Risk Thresholds
+
+The final score is interpreted using four clinical risk bands:
+
+| Score Range | Risk Level |
+|---|---|
+| 0-3 | Low |
+| 3-6 | Moderate |
+| 6-8 | High |
+| 8-10 | Critical |
+
+## Database Design
+
+The system follows a normalized relational structure to support longitudinal psychiatric monitoring.
+
+### Tables
+
+- `patients`
+  - unique patient record
+- `sessions`
+  - one-hour grouped assessment sessions
+- `tests`
+  - individual module scores and risk levels
+- `av_interview`
+  - interview transcript and audio/video emotion outputs
+
+This design supports repeated assessment over time and session-wise comparison in the dashboard.
+
+## Repository Structure
+
+```text
+final-year-project/
 ├── backend/
-│   ├── main2.py                    # FastAPI application & endpoints
-│   ├── av_pipeline.py              # Audio/video analysis pipeline
-│   ├── inference.py                # Model prediction logic
-│   ├── database.py                 # SQLAlchemy database models
+│   ├── main2.py
+│   ├── av_pipeline.py
+│   ├── database.py
+│   ├── inference.py
 │   ├── models/
-│   │   ├── best_regression_model.pt  # Trained depression model
-│   │   ├── text_model.py           # Text model definition
-│   │   └── fusion_model.py         # Multimodal fusion (optional)
+│   │   ├── feature_schema.py
+│   │   ├── fusion_model.py
+│   │   ├── text_model.py
+│   │   └── best_regression_model.pt            # expected after training
+│   ├── services/
+│   │   └── multimodal_service.py
+│   ├── training/
+│   │   ├── train_text_regressor.py
+│   │   └── train_multimodal_regressor.py
 │   └── utils/
-│       └── preprocess.py           # Text preprocessing
+│       └── preprocess.py
 ├── frontend/
-│   ├── app2.py                     # Main Streamlit app (ACTIVE)
-│   └── app.py                      # Alternative interface
-├── requirements.txt                # Python dependencies
-├── README.md                       # This file
-└── ERROR_REPORT.md                # Detailed error scan results
+│   ├── app.py
+│   └── app2.py
+├── model/
+│   └── model.py
+├── requirements.txt
+├── run_backend.ps1
+├── ERROR_REPORT.md
+└── README.md
 ```
 
-## 🚀 Installation & Setup
+## Installation
 
 ### Prerequisites
+
 - Python 3.9+
-- Webcam & microphone (for audio/video assessments)
-- 4GB+ RAM recommended
-- CUDA-capable GPU recommended for faster inference
+- webcam and microphone for AV assessment
+- internet access for first-time model downloads when required
+- optional CUDA-capable GPU for faster inference/training
 
-### Step 1: Clone & Environment Setup
-```bash
-cd d:\project
+### Environment Setup
+
+```powershell
+cd C:\Users\Sayan Chakraborty\Desktop\BEP\final-year-project
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1  # On Windows PowerShell
-# or: source .venv/bin/activate  # On Linux/Mac
-```
-
-### Step 2: Install Dependencies
-```bash
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
-### Step 3: Download Pre-trained Models
-Models are automatically downloaded on first use from HuggingFace:
-- **RoBERTa** for text analysis
-- **wav2vec2-XLSR** for audio emotion
-- **Faster-Whisper** for transcription
+## Running the System
 
-### Step 4: Run the Application
+### Backend
 
-**Start Backend:**
-```bash
-cd backend
-python -m uvicorn main2:app --reload --port 8000
-```
-Backend will be available at `http://127.0.0.1:8000`
+Recommended from project root:
 
-**Start Frontend (in new terminal):**
-```bash
-cd frontend
-streamlit run app2.py
-```
-Frontend will open at `http://localhost:8501`
-
-## 📖 How to Use
-
-### For Clinicians/Researchers
-
-#### 1. **Run AI Assessment**
-1. Open the "Run AI Assessment" page
-2. Enter Patient ID
-3. Patient enters: "How have you been feeling recently?"
-4. Relative provides: "Observed behavioral changes"
-5. Click "Run AI Assessment"
-6. View AI Score (0-10) and Risk Level
-
-#### 2. **PHQ-9 Screening**
-1. Go to "PHQ-9 Questionnaire"
-2. Enter Patient ID
-3. Answer 9 standard depression questions
-4. Submit to get PHQ-9 Score and Risk Level
-
-#### 3. **Multi-Domain Assessment**
-1. Navigate to "Multi-Domain Assessment"
-2. Select assessment module (e.g., Anxiety, Trauma, etc.)
-3. Answer domain-specific questions
-4. Submit for scoring
-
-#### 4. **Audio/Video Interview**
-1. Go to "Audio/Video Assessment"
-2. Enter Patient ID
-3. For each of 9 guided questions:
-   - Click "🎥 Start Recording"
-   - Answer the interview question (video + audio captured)
-   - Click "🛑 Stop Recording"
-   - Click "✅ Submit Answer"
-4. System automatically analyzes:
-   - Facial emotions (video)
-   - Voice emotions (audio)
-   - Speech transcript
-   - Voice features (pitch, jitter, etc.)
-5. Generate clinical summary from all responses
-
-#### 5. **Patient History Dashboard**
-1. Go to "Patient History Dashboard"
-2. Enter Patient ID
-3. View:
-   - All sessions with weighted composite scores
-   - Individual test scores by type
-   - Session score trends over time
-   - Compare two sessions side-by-side
-   - Latest mental health profile (radar chart)
-   - Interview responses by session
-
-## 🗄️ Database Schema
-
-### Tables
-- **patients** - Patient records (patient_id, created_at)
-- **sessions** - Assessment sessions (session_number, session_score, created_at)
-- **tests** - Individual assessment results (test_type, score, level)
-- **av_interview** - Recorded interview responses (transcript, emotions, confidence)
-
-### Scoring Weights
-```
-AI Assessment:      22%
-PHQ-9:              22%
-Audio/Video:        10%
-Anxiety:            13%
-Work Stress:         9%
-Anger:               9%
-Trauma:              5%
-Grief:               5%
-Relationship:        3%
-Self-Esteem:         1%
-Mental Health:       1%
+```powershell
+.\run_backend.ps1
 ```
 
-## 🎬 Sample Workflow
+Alternative:
 
-### Example: First-Time Patient Assessment
-```
-1. Patient takes AI Assessment
-   ├─ Enters narrative text
-   └─ Gets initial depression severity score
-
-2. Same session, patient completes PHQ-9
-   └─ Standardized screening questionnaire
-
-3. Later in same session, Multi-Domain Assessment
-   ├─ Selects "Anxiety" module
-   └─ Gets domain-specific insights
-
-4. Next day, patient completes Audio/Video Interview
-   ├─ Answers 9 guided questions on camera
-   ├─ System analyzes facial/voice emotions
-   ├─ Extracts voice quality metrics
-   └─ Calculates comprehensive AV score
-
-5. Clinician reviews Patient Dashboard
-   ├─ Views composite session score
-   ├─ Tracks trends over time
-   ├─ Reviews interview transcripts + emotions
-   └─ Generates clinical notes
+```powershell
+python .\backend\main2.py
 ```
 
-## ⚙️ API Endpoints (Backend)
+### Frontend
 
-### Assessment Endpoints
-- `POST /assessments/create` - AI text assessment
-- `POST /phq9/submit` - PHQ-9 questionnaire
-- `POST /questionnaire/submit` - Multi-domain screening
-- `POST /av/analyze` - Audio/video analysis
-- `POST /av/question` - Submit interview response
-- `POST /llm/summary` - Generate clinical summary
+```powershell
+cd .\frontend
+python -m streamlit run app2.py
+```
+
+## Training the Research Models
+
+Two training scripts are included for generating the checkpoint files expected by the backend.
+
+### Text Regression Checkpoint
+
+Generates:
+
+- `backend/models/best_regression_model.pt`
+
+Expected CSV fields:
+
+- `patient_text`
+- `relative_text`
+- `score`
+
+Run:
+
+```powershell
+python -m backend.training.train_text_regressor --data .\data\text_dataset.csv
+```
+
+### Multimodal Fusion Checkpoint
+
+Generates:
+
+- `backend/models/best_multimodal_model.pt`
+
+Expected CSV fields include:
+
+- `patient_text`
+- `relative_text`
+- `score`
+- engineered audio feature columns
+- engineered video feature columns
+
+Run:
+
+```powershell
+python -m backend.training.train_multimodal_regressor --data .\data\multimodal_dataset.csv
+```
+
+## Backend Endpoints
+
+### Core Assessment Endpoints
+
+- `POST /assessments/create`
+- `POST /phq9/submit`
+- `POST /questionnaire/submit`
+- `POST /av/analyze`
+- `POST /av/question`
+- `POST /multimodal/assess`
+- `POST /llm/summary`
 
 ### History Endpoints
-- `GET /sessions/{user_id}` - Get patient sessions
-- `GET /tests/{user_id}` - Get all tests for patient
-- `GET /interview/{user_id}` - Get interview responses (by session)
 
-## 📝 Assessment Scoring
+- `GET /sessions/{user_id}`
+- `GET /tests/{user_id}`
+- `GET /interview/{user_id}`
 
-### Risk Levels
-- **Low** (0-3) - Minimal risk
-- **Moderate** (3-6) - Some concerns
-- **High** (6-8) - Significant risk
-- **Critical** (8-10) - Severe risk; immediate intervention recommended
+## Important Research Notes
 
-### Composite Session Score
-Weighted average of all tests completed in a session, reflecting overall mental health status.
+This repository should be interpreted as a research and academic system, not as a production medical platform.
 
-## ⚠️ Important Notes
+- It is a clinical decision-support tool, not a diagnostic replacement.
+- Human review remains necessary for all high-risk outcomes.
+- Any critical-risk output should be reviewed by a qualified mental health professional.
+- The reported paper metrics depend on trained datasets and checkpoints, not only on architecture definition.
 
-### For Clinical Use
-- **Disclaimer**: This is an academic/research tool, NOT a medical diagnosis
-- Scores should inform but not replace professional clinical judgment
-- Always conduct follow-up with licensed mental health professionals
-- Document all assessments for clinical records
+## Current Implementation Notes
 
-### Model Limitations
-- Audio emotion detection may vary by language/accent
-- Facial emotion detection requires adequate lighting
-- Voice analysis limited by microphone quality
-- Text models trained on English-language data
+The repository now includes code structures for the paper’s multimodal design, including:
 
-### Privacy & Security
-- Database uses SQLite (local storage)
-- No data transmission to external servers
-- Patient IDs stored as-is (add encryption for production)
-- Temporary audio/video files cleaned up after processing
+- RoBERTa-based text regression
+- audio and video feature extraction
+- cross-attention fusion model scaffold
+- training scripts for text and multimodal checkpoints
 
-## 🔧 Troubleshooting
+However, exact reproduction of the paper’s reported performance requires:
 
-### Common Issues
+- the original labeled training data
+- the final trained checkpoint files
+- the same train/validation protocol used during experiments
 
-**"No audio recorded"**
-- Check microphone permissions in browser
-- Ensure sound device is properly configured
-- Test microphone in system settings first
+## Ethical Position
 
-**"Video not saving"**
-- OpenCV error: Ensure opencv-python is installed
-- Check temp/ directory exists and is writable
-- Try different video codec settings
+This project follows the paper’s intended human-in-the-loop and ethical-AI framing:
 
-**"Model download fails"**
-- Check internet connection
-- HuggingFace servers may be temporarily unavailable
-- Models cache in ~/.cache/huggingface/
+- support early screening, not automated diagnosis
+- preserve clinician oversight
+- reduce dependence on single-modality self-reporting
+- keep outputs interpretable through continuous scores and risk bands
 
-**"Database locked"**
-- Multiple processes writing simultaneously
-- Restart backend and frontend
-- Delete depression.db and reinitialize
+## References
 
-## 📚 Model References
+Primary references cited by the paper include work on:
 
-- **Depression Severity**: RoBERTa-base fine-tuned regression model
-- **Audio Emotion**: wav2vec2-Large-XLSR-English (Facebook Research)
-- **Facial Emotion**: DeepFace (7-emotion classification)
-- **Transcription**: Faster-Whisper (OpenAI Whisper optimized)
-- **Voice Analysis**: Librosa + Parselmouth Praat
+- multimodal depression detection with cross-attention
+- RoBERTa-based text regression for mental health severity
+- audio-visual depression detection from facial and vocal features
+- ethical AI in computational psychiatry
 
-## 🚀 Future Enhancements
+For the full write-up and citation list, refer to:
 
-- [ ] Multi-language support
-- [ ] Real-time therapist dashboard
-- [ ] Mobile app version
-- [ ] Integration with EHR systems
-- [ ] Advanced NLP for crisis keywords detection
-- [ ] Longitudinal ML models for progression tracking
-- [ ] Video call support for remote therapy
-- [ ] Export reports (PDF/DOCX)
-
-## 📄 License
-
-Academic and Research Use Only
-
-## 👥 Support
-
-For issues, questions, or suggestions, please check:
-- `ERROR_REPORT.md` for known issues
-- Terminal logs for runtime errors
-- Model download guides on HuggingFace
-
----
-
-**Version**: 1.0  
-**Last Updated**: April 2026  
-**Status**: ✅ Production Ready
+- [RP.pdf](C:/Users/Sayan%20Chakraborty/Desktop/RP.pdf)
+- [77_35Presentation.pdf](C:/Users/Sayan%20Chakraborty/Desktop/77_35Presentation.pdf)
+- [77_35Abstract.pdf](C:/Users/Sayan%20Chakraborty/Desktop/77_35Abstract.pdf)
